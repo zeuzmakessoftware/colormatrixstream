@@ -1,0 +1,223 @@
+<!-- templates/index.html -->
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Color Matrix Overlay</title>
+  <style>
+    body { font-family: sans-serif; background-color: #f0f0f0; color: #333; }
+    h1 { text-align: center; }
+    .container {
+        display: flex;
+        justify-content: center;
+        gap: 20px;
+        flex-wrap: wrap;
+    }
+    #video-container { text-align: center; }
+    #video { 
+        width: 640px; 
+        height: 480px;
+        border: 2px solid #ccc;
+        background-color: black;
+    }
+    .controls {
+        width: 320px;
+        padding: 15px;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        background-color: #fff;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .control-group { margin-bottom: 15px; }
+    .control-group label { display: block; margin-bottom: 5px; font-weight: bold; }
+    button, input, select { margin: 2px; padding: 5px; box-sizing: border-box; }
+    input[type="range"] { width: 100%; }
+    .pos-buttons { margin-top: 10px; text-align: center; }
+    .pos-buttons button { width: 60px; }
+    #camera-status { color: green; font-style: italic; }
+    small { color: #555; }
+  </style>
+</head>
+<body>
+  <h1>Webcam Color Matrix</h1>
+
+  <div class="container">
+    <div id="video-container">
+      <img id="video" src="/video" />
+    </div>
+
+    <div class="controls">
+      <fieldset>
+        <legend>Scale</legend>
+        <div class="control-group">
+          <label for="scaleX">Scale X: <span id="scaleX-value">50</span>px</label>
+          <input type="range" id="scaleX" min="10" max="150" value="50" oninput="updateScaleX(this.value)">
+        </div>
+        <div class="control-group">
+          <label for="scaleY">Scale Y: <span id="scaleY-value">50</span>px</label>
+          <input type="range" id="scaleY" min="10" max="150" value="50" oninput="updateScaleY(this.value)">
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Rotation</legend>
+        <div class="control-group">
+          <label for="rotationX">Rotation X: <span id="rotationX-value">0</span>°</label>
+          <input type="range" id="rotationX" min="-180" max="180" value="0" oninput="updateRotationX(this.value)">
+        </div>
+        <div class="control-group">
+          <label for="rotationY">Rotation Y: <span id="rotationY-value">0</span>°</label>
+          <input type="range" id="rotationY" min="-180" max="180" value="0" oninput="updateRotationY(this.value)">
+        </div>
+        <div class="control-group">
+          <label for="rotationZ">Rotation Z: <span id="rotationZ-value">0</span>°</label>
+          <input type="range" id="rotationZ" min="-180" max="180" value="0" oninput="updateRotationZ(this.value)">
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Position</legend>
+        <div class="control-group">
+          <label for="offsetX">X Offset: <span id="offsetX-value">0</span>px</label>
+          <input type="range" id="offsetX" min="-400" max="640" value="0" oninput="updateOffsetX(this.value)">
+        </div>
+        <div class="control-group">
+          <label for="offsetY">Y Offset: <span id="offsetY-value">0</span>px</label>
+          <input type="range" id="offsetY" min="-300" max="480" value="0" oninput="updateOffsetY(this.value)">
+        </div>
+        <div class="pos-buttons">
+          <button onclick="move(0,-10)">Up</button> <br>
+          <button onclick="move(-10,0)">Left</button>
+          <button onclick="move(10,0)">Right</button> <br>
+          <button onclick="move(0,10)">Down</button>
+        </div>
+      </fieldset>
+
+      <div class="control-group">
+        <label><input type="checkbox" id="step" onchange="toggleStep()"> Step Mode</label>
+        <button onclick="nextColor()">Next Color</button>
+      </div>
+
+      <div class="control-group">
+        <label for="camera-select">Select Camera:</label>
+        <select id="camera-select" onchange="changeCamera(this.value)"><option value="loading">Loading...</option></select>
+        <button onclick="refreshCameras()">Refresh</button>
+      </div>
+
+      <div class="control-group">
+        <label for="manual-camera">Manual Camera ID:</label>
+        <input type="number" id="manual-camera" min="0" value="0" style="width: 70px;">
+        <button onclick="addManualCamera()">Use</button>
+        <span id="camera-status"></span>
+      </div>
+    </div>
+  </div>
+
+<script>
+  let offsetX = 0, offsetY = 0;
+  let scaleX = 50, scaleY = 50;
+  let rotationX = 0, rotationY = 0, rotationZ = 0;
+  let step = false, color = 1;
+
+  document.addEventListener('DOMContentLoaded', refreshCameras);
+
+  async function sendControl(data = {}) {
+    const controlData = {
+      offset_x: offsetX, offset_y: offsetY,
+      scale_x: scaleX, scale_y: scaleY,
+      rotation_x: rotationX, rotation_y: rotationY, rotation_z: rotationZ,
+      step_mode: step, current_color: color,
+      ...data
+    };
+    await fetch('/control', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(controlData)
+    });
+  }
+
+  function updateScaleX(v) {
+    scaleX = +v;
+    document.getElementById('scaleX-value').textContent = v;
+    sendControl();
+  }
+  function updateScaleY(v) {
+    scaleY = +v;
+    document.getElementById('scaleY-value').textContent = v;
+    sendControl();
+  }
+
+  function updateRotationX(v) {
+    rotationX = +v;
+    document.getElementById('rotationX-value').textContent = v;
+    sendControl();
+  }
+  function updateRotationY(v) {
+    rotationY = +v;
+    document.getElementById('rotationY-value').textContent = v;
+    sendControl();
+  }
+  function updateRotationZ(v) {
+    rotationZ = +v;
+    document.getElementById('rotationZ-value').textContent = v;
+    sendControl();
+  }
+
+  function updateOffsetX(v) {
+    offsetX = +v;
+    document.getElementById('offsetX-value').textContent = v;
+    sendControl();
+  }
+  function updateOffsetY(v) {
+    offsetY = +v;
+    document.getElementById('offsetY-value').textContent = v;
+    sendControl();
+  }
+
+  function move(dx, dy) {
+    offsetX += dx; offsetY += dy;
+    document.getElementById('offsetX').value = offsetX;
+    document.getElementById('offsetY').value = offsetY;
+    document.getElementById('offsetX-value').textContent = offsetX;
+    document.getElementById('offsetY-value').textContent = offsetY;
+    sendControl();
+  }
+
+  function toggleStep() {
+    step = document.getElementById('step').checked;
+    sendControl();
+  }
+  function nextColor() {
+    color = color < 6 ? color + 1 : 1;
+    sendControl();
+  }
+
+  async function refreshCameras() {
+    try {
+      const r = await fetch('/get_cameras'), d = await r.json();
+      const sel = document.getElementById('camera-select');
+      sel.innerHTML = '';
+      d.cameras.forEach(id => {
+        const opt = new Option(`Camera ${id}`, id);
+        if (id === d.current) opt.selected = true;
+        sel.add(opt);
+      });
+      if (!d.cameras.length) sel.add(new Option("No cameras found",""));
+    } catch(e){ console.error(e); }
+  }
+  function changeCamera(id) {
+    if(id!=="loading"&&id!==""){
+      sendControl({camera_id:+id});
+      document.getElementById('camera-status').textContent = `Switched to ${id}`;
+      setTimeout(()=>{document.getElementById('camera-status').textContent='';},2000);
+    }
+  }
+  async function addManualCamera(){
+    const id = +document.getElementById('manual-camera').value;
+    await fetch('/add_camera',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({camera_id:id})});
+    await refreshCameras();
+    document.getElementById('camera-select').value = id;
+    changeCamera(id);
+  }
+</script>
+</body>
+</html>
