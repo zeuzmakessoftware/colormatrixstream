@@ -1,216 +1,851 @@
 <!-- templates/index.html -->
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Color Matrix Overlay</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Color Matrix Interface // Design Maestro</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
   <style>
-    body { font-family: sans-serif; background-color: #f0f0f0; color: #333; }
-    h1 { text-align: center; }
-    .container {
-        display: flex;
-        justify-content: center;
-        gap: 20px;
-        flex-wrap: wrap;
+    :root {
+      --bg-color: #0D0E18;
+      --primary-glow: rgba(0, 255, 255, 0.7);
+      --primary-glow-transparent: rgba(0, 255, 255, 0.1);
+      --secondary-glow: rgba(255, 0, 255, 0.6);
+      --glass-bg: rgba(20, 22, 37, 0.5);
+      --text-primary: #E0E1FF;
+      --text-secondary: #9095C2;
+      --border-color: rgba(100, 108, 153, 0.2);
+      --border-hover: rgba(0, 255, 255, 0.5);
+      --font-family: 'Poppins', sans-serif;
+      --transition-fast: 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+      --transition-medium: 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
     }
-    #video-container { text-align: center; }
-    #video { 
-        width: 640px; 
-        height: 480px;
-        border: 2px solid #ccc;
-        background-color: black;
+
+    /* --- Base & Background --- */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
     }
+
+    body {
+      font-family: var(--font-family);
+      background-color: var(--bg-color);
+      color: var(--text-primary);
+      overflow-x: hidden;
+      overflow-y: auto; /* Enable vertical scrolling */
+      min-height: 100vh;
+      padding: 20px 0; /* Add some padding around the content */
+      box-sizing: border-box;
+    }
+
+    .aurora-background {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: -1;
+      overflow: hidden;
+    }
+
+    .aurora-background::before,
+    .aurora-background::after {
+      content: '';
+      position: absolute;
+      width: 100vmin;
+      height: 100vmin;
+      border-radius: 50%;
+      filter: blur(150px);
+      opacity: 0.4;
+      mix-blend-mode: screen;
+    }
+
+    .aurora-background::before {
+      background: radial-gradient(circle at center, var(--primary-glow), transparent 60%);
+      top: -20%;
+      left: -20%;
+      animation: moveAurora1 25s infinite alternate ease-in-out;
+    }
+
+    .aurora-background::after {
+      background: radial-gradient(circle at center, var(--secondary-glow), transparent 60%);
+      bottom: -20%;
+      right: -20%;
+      animation: moveAurora2 30s infinite alternate-reverse ease-in-out;
+    }
+
+    @keyframes moveAurora1 {
+      to { transform: translate(40vw, 30vh) scale(1.2); }
+    }
+    @keyframes moveAurora2 {
+      to { transform: translate(-30vw, -40vh) scale(0.8); }
+    }
+
+    /* --- Main App Layout --- */
+    .app-container {
+      display: flex;
+      gap: 30px;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-items: flex-start;
+      padding: 2rem;
+      width: 100%;
+      max-width: 1200px;
+      margin: 0 auto;
+      opacity: 0;
+      transform: scale(0.98);
+      animation: powerOn 1s 0.2s forwards ease-out;
+      min-height: 0; /* Allow container to shrink if needed */
+    }
+    
+    @keyframes powerOn {
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    /* --- Video Container --- */
+    #video-container {
+      position: relative;
+      will-change: transform;
+      transition: transform 0.1s linear;
+      flex-shrink: 0; /* Prevent shrinking */
+    }
+
+    #video-wrapper {
+      position: relative;
+      border-radius: 12px;
+      overflow: hidden;
+      background-color: #000;
+      box-shadow: 0 0 15px rgba(0, 0, 0, 0.5), 
+                  inset 0 0 2px 1px var(--primary-glow-transparent);
+    }
+    
+    #video-wrapper::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(to bottom, rgba(255,255,255,0.02) 50%, transparent 50%);
+      background-size: 100% 4px;
+      opacity: 0.4;
+      pointer-events: none;
+    }
+
+    #video {
+      display: block;
+      width: 640px;
+      height: 480px;
+      border: none;
+      transition: transform 0.3s ease-out;
+    }
+
+    /* --- Controls Panel --- */
     .controls {
-        width: 320px;
-        padding: 15px;
-        border: 1px solid #ddd;
-        border-radius: 8px;
-        background-color: #fff;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      width: 380px;
+      padding: 25px;
+      border-radius: 12px;
+      background-color: var(--glass-bg);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid var(--border-color);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2), 
+                  inset 0 0 0 1px var(--border-color);
+      will-change: transform;
+      transition: transform 0.1s linear;
+      flex-shrink: 0; /* Prevent shrinking */
     }
-    .control-group { margin-bottom: 15px; }
-    .control-group label { display: block; margin-bottom: 5px; font-weight: bold; }
-    button, input, select { margin: 2px; padding: 5px; box-sizing: border-box; }
-    input[type="range"] { width: 100%; }
-    .pos-buttons { margin-top: 10px; text-align: center; }
-    .pos-buttons button { width: 60px; }
-    #camera-status { color: green; font-style: italic; }
-    small { color: #555; }
+    
+    fieldset {
+      border: none;
+      padding: 0;
+      margin-bottom: 20px;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 20px;
+    }
+    fieldset:last-of-type { border-bottom: none; margin-bottom: 0; padding-bottom: 0;}
+
+    legend {
+      font-weight: 600;
+      font-size: 1.1rem;
+      color: var(--text-primary);
+      margin-bottom: 15px;
+      padding-right: 10px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .control-group {
+      margin-bottom: 18px;
+      position: relative;
+    }
+    .control-group:last-child { margin-bottom: 0; }
+
+    .control-group label {
+      display: block;
+      margin-bottom: 12px;
+      font-weight: 400;
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+    }
+
+    /* --- Custom Sliders --- */
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 6px;
+      background: linear-gradient(to right, var(--primary-glow) 0%, var(--primary-glow) var(--value-percent, 50%), var(--border-color) var(--value-percent, 50%), var(--border-color) 100%);
+      border-radius: 3px;
+      outline: none;
+      transition: background 0.1s ease;
+      cursor: pointer;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 20px;
+      height: 20px;
+      background-color: var(--bg-color);
+      border: 3px solid var(--primary-glow);
+      border-radius: 50%;
+      box-shadow: 0 0 10px var(--primary-glow-transparent), 0 0 20px var(--primary-glow-transparent);
+      transition: var(--transition-fast);
+      transform: scale(1);
+      animation: pulse 2.5s infinite ease-in-out;
+    }
+
+    input[type="range"]:hover::-webkit-slider-thumb,
+    input[type="range"]:focus::-webkit-slider-thumb {
+      transform: scale(1.2);
+      box-shadow: 0 0 15px var(--primary-glow), 0 0 30px var(--primary-glow-transparent);
+    }
+    
+    @keyframes pulse { 
+      0%, 100% { box-shadow: 0 0 8px var(--primary-glow-transparent); }
+      50% { box-shadow: 0 0 16px var(--primary-glow); }
+    }
+    
+    input[type="range"]::-moz-range-track {
+        background: linear-gradient(to right, var(--primary-glow) 0%, var(--primary-glow) var(--value-percent, 50%), var(--border-color) var(--value-percent, 50%), var(--border-color) 100%);
+        height: 6px; border-radius: 3px;
+    }
+    input[type="range"]::-moz-range-thumb {
+        width: 20px; height: 20px; background-color: var(--bg-color); border: 3px solid var(--primary-glow);
+        border-radius: 50%; box-shadow: 0 0 10px var(--primary-glow-transparent); transition: var(--transition-fast);
+    }
+
+    .slider-value-tooltip {
+      position: absolute;
+      top: -10px;
+      left: var(--value-percent, 50%);
+      transform: translateX(-50%);
+      background-color: var(--primary-glow);
+      color: var(--bg-color);
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity var(--transition-fast);
+      white-space: nowrap;
+    }
+    
+    .control-group:has(input[type="range"]:active) .slider-value-tooltip,
+    .control-group:has(input[type="range"]:focus) .slider-value-tooltip {
+      opacity: 1;
+    }
+
+    .control-group label span { display: none; }
+
+
+    /* --- Buttons & Inputs --- */
+    button, .custom-select select {
+      font-family: var(--font-family);
+      background: var(--primary-glow-transparent);
+      border: 1px solid var(--border-color);
+      color: var(--text-primary);
+      padding: 10px 15px;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: var(--transition-fast);
+      outline: none;
+    }
+
+    button:hover, .custom-select select:hover {
+      background: var(--primary-glow);
+      color: var(--bg-color);
+      border-color: var(--primary-glow);
+      box-shadow: 0 0 15px var(--primary-glow-transparent);
+      transform: translateY(-2px);
+    }
+
+    .control-group > div { display: flex; gap: 10px; align-items: center;}
+    input[type="number"] {
+      font-family: var(--font-family);
+      width: 70px;
+      padding: 10px;
+      background: none;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      color: var(--text-primary);
+      text-align: center;
+      transition: var(--transition-fast);
+    }
+    input[type="number"]:focus {
+      outline: none;
+      border-color: var(--border-hover);
+      box-shadow: 0 0 10px var(--primary-glow-transparent);
+    }
+    
+    /* --- Custom Select --- */
+    .custom-select {
+        position: relative;
+        display: inline-block;
+    }
+    .custom-select select {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 100%;
+        padding-right: 30px;
+    }
+    .custom-select::after {
+        content: '▼';
+        position: absolute;
+        right: 15px;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 0.7rem;
+        pointer-events: none;
+        color: var(--text-secondary);
+        transition: color var(--transition-fast);
+    }
+    .custom-select:hover::after {
+        color: var(--bg-color);
+    }
+    
+    /* --- Custom Checkbox --- */
+    .checkbox-label {
+      display: flex;
+      align-items: center;
+      cursor: pointer;
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+    }
+    input[type="checkbox"] { display: none; }
+    .checkbox-custom {
+      width: 20px; height: 20px;
+      border: 2px solid var(--border-color);
+      border-radius: 4px;
+      margin-right: 10px;
+      display: grid;
+      place-content: center;
+      transition: var(--transition-fast);
+    }
+    .checkbox-custom::before {
+      content: '✓';
+      color: var(--primary-glow);
+      font-size: 14px;
+      font-weight: bold;
+      transform: scale(0);
+      transition: transform 0.2s ease-out;
+    }
+    input[type="checkbox"]:checked + .checkbox-custom {
+      border-color: var(--primary-glow);
+      background-color: var(--primary-glow-transparent);
+    }
+    input[type="checkbox"]:checked + .checkbox-custom::before {
+      transform: scale(1);
+    }
+
+
+    /* --- Matrix Editor Styles --- */
+    #matrix-grid {
+        display: grid;
+        grid-template-columns: repeat(8, minmax(10px, 1fr));
+        grid-gap: 3px;
+        width: 100%;
+        max-width: 320px;    /* will never exceed 320px, but shrink on small screens */
+        margin: 0 auto;
+    }
+
+    .grid-cell {
+      width: 100%;
+      padding-bottom: 100%; /* Square aspect ratio */
+      position: relative;
+      background-color: var(--glass-bg);
+      border-radius: 3px;
+      cursor: pointer;
+      transition: transform 0.1s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+    }
+    .grid-cell:hover {
+      transform: scale(1.1);
+      box-shadow: 0 0 10px var(--primary-glow);
+      z-index: 10;
+    }
+    #matrix-grid.step-mode-active .grid-cell[data-value="0"] {
+        cursor: not-allowed;
+        opacity: 0.5;
+    }
+    .grid-cell.step-highlight {
+      box-shadow: 0 0 8px 2px #fff, inset 0 0 5px 1px #fff;
+    }
+    #matrix-grid.step-mode-active .grid-cell:not([data-value="0"]):hover {
+      transform: scale(1.1);
+      box-shadow: 0 0 15px var(--secondary-glow);
+    }
+
+    #color-palette {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: -5px; /* Adjust alignment */
+    }
+    .color-swatch {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      cursor: pointer;
+      border: 3px solid var(--border-color);
+      transition: all 0.2s ease;
+      position: relative;
+    }
+    .color-swatch:hover {
+      transform: scale(1.1);
+    }
+    .color-swatch.active {
+      border-color: #fff;
+      box-shadow: 0 0 10px #fff;
+      transform: scale(1.15);
+    }
+    #matrix-grid-label {
+        font-size: 0.8rem;
+        font-style: italic;
+        color: var(--text-secondary);
+        margin-bottom: 8px !important;
+    }
+
+    /* --- Status & Notifications --- */
+    #camera-status {
+      font-size: 0.8rem;
+      font-style: italic;
+      color: var(--text-secondary);
+      transition: color var(--transition-fast);
+    }
+    
+    #toast-notification {
+      position: fixed;
+      bottom: -100px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 12px 25px;
+      background-color: var(--primary-glow);
+      color: var(--bg-color);
+      border-radius: 8px;
+      box-shadow: 0 0 20px var(--primary-glow);
+      font-weight: 600;
+      transition: bottom 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      z-index: 1000;
+    }
+
+    /* --- Responsive Design --- */
+    @media (max-width: 1200px) {
+        .app-container {
+            flex-direction: column;
+            align-items: center;
+            padding: 1rem;
+            gap: 20px;
+            min-height: auto;
+        }
+        #video-container {
+            width: 100%;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        #video-wrapper {
+            width: 100%;
+            height: auto;
+            aspect-ratio: 4/3;
+        }
+        #video {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+        .controls {
+            width: 100%;
+            max-width: 800px;
+            padding: 20px;
+        }
+        .control-group {
+            margin-bottom: 15px;
+        }
+        #matrix-grid {
+            max-width: 100%;
+            grid-gap: 2px;
+        }
+    }
+
+    /* Ensure controls panel is scrollable on small screens */
+    .controls {
+      max-height: none !important;
+      overflow-y: visible;
+    }
+
+    @media (max-width: 768px) {
+        .app-container {
+            padding: 10px;
+        }
+        .controls {
+            padding: 15px;
+        }
+        .control-group > div {
+            flex-wrap: wrap;
+        }
+        button, .custom-select select, input[type="number"] {
+            padding: 8px 12px;
+            font-size: 0.85rem;
+        }
+        #matrix-grid {
+            max-width: 100%;
+            grid-gap: 1px;
+        }
+        .grid-cell {
+            min-width: 20px;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .app-container {
+            padding: 5px;
+        }
+        .controls {
+            padding: 12px;
+        }
+        legend {
+            font-size: 1rem;
+            margin-bottom: 10px;
+        }
+        .control-group label {
+            font-size: 0.8rem;
+            margin-bottom: 8px;
+        }
+        #matrix-grid {
+            max-width: 100%;
+        }
+    }
   </style>
 </head>
 <body>
-  <h1>Webcam Color Matrix</h1>
 
-  <div class="container">
+  <div class="aurora-background"></div>
+
+  <main class="app-container">
     <div id="video-container">
-      <img id="video" src="/video" />
+      <div id="video-wrapper">
+        <img id="video" src="/video" alt="Live Webcam Feed" />
+      </div>
     </div>
 
     <div class="controls">
       <fieldset>
-        <legend>Scale</legend>
+        <legend>Transform</legend>
         <div class="control-group">
-          <label for="scaleX">Scale X: <span id="scaleX-value">50</span>px</label>
-          <input type="range" id="scaleX" min="10" max="150" value="50" oninput="updateScaleX(this.value)">
+          <label for="scaleX">Scale X</label>
+          <span class="slider-value-tooltip" id="scaleX-value">50px</span>
+          <input type="range" id="scaleX" min="10" max="150" value="50">
         </div>
         <div class="control-group">
-          <label for="scaleY">Scale Y: <span id="scaleY-value">50</span>px</label>
-          <input type="range" id="scaleY" min="10" max="150" value="50" oninput="updateScaleY(this.value)">
-        </div>
-      </fieldset>
-
-      <fieldset>
-        <legend>Rotation</legend>
-        <div class="control-group">
-          <label for="rotationX">Rotation X: <span id="rotationX-value">0</span>°</label>
-          <input type="range" id="rotationX" min="-180" max="180" value="0" oninput="updateRotationX(this.value)">
+          <label for="scaleY">Scale Y</label>
+          <span class="slider-value-tooltip" id="scaleY-value">50px</span>
+          <input type="range" id="scaleY" min="10" max="150" value="50">
         </div>
         <div class="control-group">
-          <label for="rotationY">Rotation Y: <span id="rotationY-value">0</span>°</label>
-          <input type="range" id="rotationY" min="-180" max="180" value="0" oninput="updateRotationY(this.value)">
-        </div>
-        <div class="control-group">
-          <label for="rotationZ">Rotation Z: <span id="rotationZ-value">0</span>°</label>
-          <input type="range" id="rotationZ" min="-180" max="180" value="0" oninput="updateRotationZ(this.value)">
+          <label for="rotationZ">Rotation</label>
+          <span class="slider-value-tooltip" id="rotationZ-value">0°</span>
+          <input type="range" id="rotationZ" min="-180" max="180" value="0">
         </div>
       </fieldset>
 
       <fieldset>
         <legend>Position</legend>
         <div class="control-group">
-          <label for="offsetX">X Offset: <span id="offsetX-value">0</span>px</label>
-          <input type="range" id="offsetX" min="-400" max="640" value="0" oninput="updateOffsetX(this.value)">
+          <label for="offsetX">Offset X</label>
+          <span class="slider-value-tooltip" id="offsetX-value">0px</span>
+          <input type="range" id="offsetX" min="-400" max="640" value="0">
         </div>
         <div class="control-group">
-          <label for="offsetY">Y Offset: <span id="offsetY-value">0</span>px</label>
-          <input type="range" id="offsetY" min="-300" max="480" value="0" oninput="updateOffsetY(this.value)">
+          <label for="offsetY">Offset Y</label>
+          <span class="slider-value-tooltip" id="offsetY-value">0px</span>
+          <input type="range" id="offsetY" min="-300" max="480" value="0">
         </div>
-        <div class="pos-buttons">
-          <button onclick="move(0,-10)">Up</button> <br>
-          <button onclick="move(-10,0)">Left</button>
-          <button onclick="move(10,0)">Right</button> <br>
-          <button onclick="move(0,10)">Down</button>
+      </fieldset>
+      
+      <fieldset>
+        <legend>Matrix Editor</legend>
+        <div class="control-group">
+          <label>Color Palette</label>
+          <div id="color-palette"></div>
+        </div>
+        <div class="control-group">
+          <label id="matrix-grid-label">Loading grid...</label>
+          <div id="matrix-grid"></div>
+        </div>
+        <div class="control-group">
+          <label class="checkbox-label">
+              <input type="checkbox" id="step">
+              <span class="checkbox-custom"></span>
+              Step Mode
+          </label>
         </div>
       </fieldset>
 
-      <div class="control-group">
-        <label><input type="checkbox" id="step" onchange="toggleStep()"> Step Mode</label>
-        <button onclick="nextColor()">Next Color</button>
-      </div>
+      <fieldset>
+        <legend>System</legend>
+        <div class="control-group">
+          <div>
+            <div class="custom-select">
+                <select id="camera-select"><option value="loading">Loading...</option></select>
+            </div>
+            <button onclick="refreshCameras()">Refresh</button>
+          </div>
+        </div>
 
-      <div class="control-group">
-        <label for="camera-select">Select Camera:</label>
-        <select id="camera-select" onchange="changeCamera(this.value)"><option value="loading">Loading...</option></select>
-        <button onclick="refreshCameras()">Refresh</button>
-      </div>
-
-      <div class="control-group">
-        <label for="manual-camera">Manual Camera ID:</label>
-        <input type="number" id="manual-camera" min="0" value="0" style="width: 70px;">
-        <button onclick="addManualCamera()">Use</button>
-        <span id="camera-status"></span>
-      </div>
+        <div class="control-group">
+          <div>
+            <input type="number" id="manual-camera" min="0" value="0">
+            <button onclick="addManualCamera()">Use ID</button>
+          </div>
+          <span id="camera-status"></span>
+        </div>
+      </fieldset>
     </div>
-  </div>
+  </main>
+  
+  <div id="toast-notification"></div>
 
 <script>
+  // --- Global State ---
   let offsetX = 0, offsetY = 0;
   let scaleX = 50, scaleY = 50;
-  let rotationX = 0, rotationY = 0, rotationZ = 0;
+  let rotationZ = 0;
+  let rotationX = 0, rotationY = 0; // Kept for compatibility
   let step = false, color = 1;
+  let step_x = 0, step_y = 0; // Initialize step variables
 
-  document.addEventListener('DOMContentLoaded', refreshCameras);
+  // Matrix Editor State
+  let localMatrix = [];
+  let colorsMap = {};
+  let activeBrushColor = 1;
 
+
+  // --- Core Backend Communication ---
   async function sendControl(data = {}) {
     const controlData = {
       offset_x: offsetX, offset_y: offsetY,
       scale_x: scaleX, scale_y: scaleY,
       rotation_x: rotationX, rotation_y: rotationY, rotation_z: rotationZ,
       step_mode: step, current_color: color,
+      step_x, step_y,
       ...data
     };
-    await fetch('/control', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify(controlData)
+    try {
+      await fetch('/control', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(controlData)
+      });
+    } catch(e) {
+      console.error("Failed to send control data:", e);
+      showToastNotification("Connection Error", 3000);
+    }
+  }
+
+  // --- Initializer ---
+  document.addEventListener('DOMContentLoaded', initApp);
+
+  async function initApp() {
+    try {
+      const response = await fetch('/get_config');
+      if (!response.ok) throw new Error('Failed to load config');
+      const config = await response.json();
+      
+      localMatrix = config.matrix;
+      Object.keys(config.colors).forEach(key => {
+          colorsMap[key] = `rgb(${config.colors[key].join(',')})`;
+      });
+
+      // Initialize UI components
+      buildColorPalette();
+      buildMatrixGrid();
+      setupEventListeners();
+      initSliders(); // Make sure sliders are initialized
+      
+      updateStepModeVisuals(document.getElementById('step').checked);
+      refreshCameras();
+
+      // Initialize slider values
+      document.querySelectorAll('input[type="range"]').forEach(updateSliderValue);
+
+    } catch (e) {
+      console.error("Initialization failed:", e);
+      showToastNotification("Error: Could not load config from server.", 5000);
+    }
+  }
+
+  // --- UI Building ---
+  function buildColorPalette() {
+    const palette = document.getElementById('color-palette');
+    palette.innerHTML = '';
+    Object.keys(colorsMap).sort().forEach(key => {
+      const swatch = document.createElement('div');
+      swatch.className = 'color-swatch';
+      swatch.dataset.color = key;
+      swatch.style.backgroundColor = colorsMap[key];
+      if (parseInt(key) === activeBrushColor) swatch.classList.add('active');
+      swatch.addEventListener('click', handlePaletteClick);
+      palette.appendChild(swatch);
     });
   }
 
-  function updateScaleX(v) {
-    scaleX = +v;
-    document.getElementById('scaleX-value').textContent = v;
-    sendControl();
+  function buildMatrixGrid() {
+    const grid = document.getElementById('matrix-grid');
+    grid.innerHTML = '';
+    localMatrix.forEach((row, rowIndex) => {
+      row.forEach((value, colIndex) => {
+        const cell = document.createElement('div');
+        cell.className = 'grid-cell';
+        cell.dataset.row = rowIndex;
+        cell.dataset.col = colIndex;
+        updateCellVisuals(cell, value);
+        cell.addEventListener('click', handleGridClick);
+        grid.appendChild(cell);
+      });
+    });
   }
-  function updateScaleY(v) {
-    scaleY = +v;
-    document.getElementById('scaleY-value').textContent = v;
-    sendControl();
+  
+  // --- Event Handlers & Logic ---
+  function setupEventListeners() {
+    document.getElementById('step').addEventListener('change', toggleStep);
+    document.getElementById('camera-select').addEventListener('change', (e) => changeCamera(e.target.value));
   }
-
-  function updateRotationX(v) {
-    rotationX = +v;
-    document.getElementById('rotationX-value').textContent = v;
-    sendControl();
-  }
-  function updateRotationY(v) {
-    rotationY = +v;
-    document.getElementById('rotationY-value').textContent = v;
-    sendControl();
-  }
-  function updateRotationZ(v) {
-    rotationZ = +v;
-    document.getElementById('rotationZ-value').textContent = v;
-    sendControl();
-  }
-
-  function updateOffsetX(v) {
-    offsetX = +v;
-    document.getElementById('offsetX-value').textContent = v;
-    sendControl();
-  }
-  function updateOffsetY(v) {
-    offsetY = +v;
-    document.getElementById('offsetY-value').textContent = v;
-    sendControl();
+  
+  function handlePaletteClick(e) {
+    activeBrushColor = parseInt(e.target.dataset.color);
+    document.querySelectorAll('.color-swatch').forEach(sw => sw.classList.remove('active'));
+    e.target.classList.add('active');
   }
 
-  function move(dx, dy) {
-    offsetX += dx; offsetY += dy;
-    document.getElementById('offsetX').value = offsetX;
-    document.getElementById('offsetY').value = offsetY;
-    document.getElementById('offsetX-value').textContent = offsetX;
-    document.getElementById('offsetY-value').textContent = offsetY;
-    sendControl();
-  }
+  function handleGridClick(e) {
+  const cell = e.target;
+  const row = +cell.dataset.row;
+  const col = +cell.dataset.col;
 
+    if (step) {
+        step_x = col;
+        step_y = row;
+        sendControl({ step_x, step_y });
+        updateStepModeVisuals();
+        showToastNotification(`Stepped to [${row},${col}]`, 1200);
+    } else { // Edit mode
+      const row = parseInt(cell.dataset.row);
+      const col = parseInt(cell.dataset.col);
+      const currentValue = parseInt(cell.dataset.value);
+      const newValue = currentValue === activeBrushColor ? 0 : activeBrushColor;
+      
+      localMatrix[row][col] = newValue;
+      updateCellVisuals(cell, newValue);
+      debouncedSendMatrixUpdate();
+    }
+  }
+  
   function toggleStep() {
     step = document.getElementById('step').checked;
     sendControl();
+    updateStepModeVisuals(step);
   }
-  function nextColor() {
-    color = color < 6 ? color + 1 : 1;
-    sendControl();
+
+  // --- Visuals & State Updaters ---
+  function updateCellVisuals(cell, value) {
+    cell.dataset.value = value;
+    cell.style.backgroundColor = value === 0 ? 'var(--glass-bg)' : colorsMap[value];
   }
+
+  function updateStepModeVisuals() {
+    const grid = document.getElementById('matrix-grid');
+    const label = document.getElementById('matrix-grid-label');
+    grid.querySelectorAll('.grid-cell').forEach(c => c.classList.remove('step-highlight'));
+
+    if (step) {
+        grid.classList.add('step-mode-active');
+        label.textContent = 'Click a cell to step through it.';
+        const selector = `.grid-cell[data-row="${step_y}"][data-col="${step_x}"]`;
+        const cell = grid.querySelector(selector);
+        if (cell) cell.classList.add('step-highlight');
+    } else {
+        grid.classList.remove('step-mode-active');
+        label.textContent = 'Click to paint with selected color. Click again to erase.';
+    }
+    }
+
+  let debounceTimeout;
+  function debouncedSendMatrixUpdate() {
+    clearTimeout(debounceTimeout);
+    debounceTimeout = setTimeout(sendMatrixUpdate, 300);
+  }
+
+  async function sendMatrixUpdate() {
+    try {
+      await fetch('/update_matrix', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ matrix: localMatrix })
+      });
+    } catch(e) {
+      console.error("Failed to update matrix:", e);
+      showToastNotification("Matrix update failed.", 3000);
+    }
+  }
+
+  // --- Original Functions (Attached to new UI) ---
+  function updateScaleX(v) { scaleX = +v; sendControl(); }
+  function updateScaleY(v) { scaleY = +v; sendControl(); }
+  function updateRotationZ(v) { rotationZ = +v; sendControl(); }
+  function updateOffsetX(v) { offsetX = +v; sendControl(); }
+  function updateOffsetY(v) { offsetY = +v; sendControl(); }
 
   async function refreshCameras() {
     try {
       const r = await fetch('/get_cameras'), d = await r.json();
       const sel = document.getElementById('camera-select');
+      const currentVal = sel.value;
       sel.innerHTML = '';
-      d.cameras.forEach(id => {
-        const opt = new Option(`Camera ${id}`, id);
-        if (id === d.current) opt.selected = true;
-        sel.add(opt);
-      });
-      if (!d.cameras.length) sel.add(new Option("No cameras found",""));
+      if (d.cameras.length > 0) {
+        d.cameras.forEach(id => {
+            const opt = new Option(`Camera ${id}`, id);
+            sel.add(opt);
+        });
+        sel.value = d.current_camera_id !== -1 ? d.current_camera_id : (d.cameras.includes(currentVal) ? currentVal : d.cameras[0]);
+      } else {
+        sel.add(new Option("No cameras found",""));
+      }
     } catch(e){ console.error(e); }
   }
+
   function changeCamera(id) {
-    if(id!=="loading"&&id!==""){
+    if(id && id !== "loading" && id !== ""){
       sendControl({camera_id:+id});
-      document.getElementById('camera-status').textContent = `Switched to ${id}`;
-      setTimeout(()=>{document.getElementById('camera-status').textContent='';},2000);
+      showToastNotification(`Switching to Camera ${id}`, 2000);
     }
   }
+
   async function addManualCamera(){
     const id = +document.getElementById('manual-camera').value;
     await fetch('/add_camera',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({camera_id:id})});
@@ -218,6 +853,60 @@
     document.getElementById('camera-select').value = id;
     changeCamera(id);
   }
+  
+  // --- DESIGN MAESTRO UX ENHANCEMENTS ---
+  function updateSliderValue(slider) {
+    const min = +slider.min || 0;
+    const max = +slider.max || 100;
+    const value = +slider.value;
+    const percent = ((value - min) / (max - min)) * 100;
+    slider.style.setProperty('--value-percent', `${percent}%`);
+    const tooltip = document.getElementById(`${slider.id}-value`);
+    if (tooltip) {
+      const unit = slider.id.includes('rotation') ? '°' : 'px';
+      tooltip.textContent = `${value}${unit}`;
+      tooltip.style.left = `calc(${percent}% + ${(10 - percent * 0.2)}px)`;
+    }
+  }
+
+  function initSliders() {
+    const sliders = document.querySelectorAll('input[type="range"]');
+    sliders.forEach(slider => {
+      // Initial update
+      updateSliderValue(slider);
+      
+      // Add input event listener
+      slider.addEventListener('input', (e) => {
+        updateSliderValue(e.target);
+        const value = +e.target.value;
+        
+        // Update the corresponding global variable
+        switch(e.target.id) {
+          case 'scaleX': scaleX = value; updateScaleX(value); break;
+          case 'scaleY': scaleY = value; updateScaleY(value); break;
+          case 'rotationZ': rotationZ = value; updateRotationZ(value); break;
+          case 'offsetX': offsetX = value; updateOffsetX(value); break;
+          case 'offsetY': offsetY = value; updateOffsetY(value); break;
+        }
+        
+        // Send the update to the server
+        sendControl();
+      });
+    });
+  }
+
+  let toastTimeout;
+  function showToastNotification(message, duration = 2000) {
+    const toast = document.getElementById('toast-notification');
+    if (!toast) return;
+    clearTimeout(toastTimeout);
+    toast.textContent = message;
+    toast.style.bottom = '20px';
+    toastTimeout = setTimeout(() => {
+        toast.style.bottom = '-100px';
+    }, duration);
+  }
+
 </script>
 </body>
 </html>

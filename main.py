@@ -15,6 +15,7 @@ except Exception:
 app = Flask(__name__)
 
 camera_lock = threading.Lock()
+matrix_lock = threading.Lock()
 camera_id = 0
 capture = None
 
@@ -27,6 +28,7 @@ rotation_y = 0
 rotation_z = 0
 step_mode = False
 current_color = 1
+step_x, step_y = 0, 0
 
 matrix = [
     [0,0,0,0,0,0,0,0],
@@ -38,10 +40,16 @@ matrix = [
     [0,0,4,5,5,4,0,0],
     [0,0,0,0,0,0,0,0]
 ]
-colors = {
-    1:(0,0,255), 2:(0,255,0), 3:(139,0,0),
-    4:(0,255,255),5:(255,255,0),6:(255,0,255)
+colors_rgb = {
+    1: (231, 25, 74),
+    2: (60, 179, 75),
+    3: (68, 99, 216),
+    4: (254, 224, 28),
+    5: (65, 212, 245),
+    6: (145, 31, 181)
 }
+
+colors = {k: (v[2], v[1], v[0]) for k, v in colors_rgb.items()}
 
 def generate_frames():
     global capture, camera_id
@@ -73,7 +81,10 @@ def generate_frames():
         else:
             h_frame, w_frame = frame.shape[:2]
 
-        rows, cols = len(matrix), len(matrix[0])
+        with matrix_lock:
+            current_matrix = [row[:] for row in matrix]
+
+        rows, cols = len(current_matrix), len(current_matrix[0])
         ow_f = cols * scale_x
         oh_f = rows * scale_y
         
@@ -88,13 +99,14 @@ def generate_frames():
         
         for i in range(rows):
             for j in range(cols):
-                v = matrix[i][j]
-                if v and (not step_mode or v == current_color):
+                v = current_matrix[i][j]
+                if v and (not step_mode or (i == step_y and j == step_x)):
                     x1 = int(j * scale_x)
                     y1 = int(i * scale_y)
                     x2 = int((j + 1) * scale_x) - 1
                     y2 = int((i + 1) * scale_y) - 1
-                    cv2.rectangle(overlay, (x1, y1), (x2, y2), colors[v], -1)
+                    bgr_color = (colors_rgb[v][2], colors_rgb[v][1], colors_rgb[v][0])
+                    cv2.rectangle(overlay, (x1, y1), (x2, y2), bgr_color, -1)
 
         final_offset_x = float(offset_x)
         final_offset_y = float(offset_y)
@@ -154,6 +166,7 @@ def control():
     global rotation_x, rotation_y, rotation_z
     global step_mode, current_color
     global camera_id, capture
+    global step_x, step_y
 
     data = request.get_json() or {}
     offset_x    = data.get('offset_x', offset_x)
@@ -165,6 +178,8 @@ def control():
     rotation_z  = data.get('rotation_z', rotation_z)
     step_mode   = data.get('step_mode', step_mode)
     current_color = data.get('current_color', current_color)
+    step_x      = data.get('step_x', step_x)
+    step_y      = data.get('step_y', step_y)
 
     if 'camera_id' in data:
         try:
@@ -180,6 +195,34 @@ def control():
             pass
 
     return ('',200)
+
+@app.route('/get_config')
+def get_config():
+    with matrix_lock:
+        return jsonify({
+            'matrix': matrix,
+            'colors': colors_rgb,
+        })
+
+@app.route('/update_matrix', methods=['POST'])
+def update_matrix():
+    global matrix
+    data = request.get_json()
+    if not data or 'matrix' not in data:
+        return jsonify({'error': 'Missing matrix data'}), 400
+    
+    new_matrix = data['matrix']
+    if not isinstance(new_matrix, list) or len(new_matrix) == 0 or not isinstance(new_matrix[0], list):
+        return jsonify({'error': 'Invalid matrix format'}), 400
+    
+    rows, cols = len(new_matrix), len(new_matrix[0])
+    if rows != 8 or not all(len(row) == cols for row in new_matrix):
+         return jsonify({'error': 'Matrix must be rectangular and 8 rows'}), 400
+
+    with matrix_lock:
+        matrix = new_matrix
+    
+    return jsonify({'success': True})
 
 @app.route('/get_cameras')
 def get_cameras():
