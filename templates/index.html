@@ -595,6 +595,14 @@
           <div id="color-palette"></div>
         </div>
         <div class="control-group">
+          <!-- Matrix size controls -->
+          <div class="matrix-size-controls" style="margin-bottom:12px; display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+            <label for="rows-count" style="color:var(--text-secondary);">Rows</label>
+            <input type="number" id="rows-count" min="1" max="32" value="8" style="width:60px;">
+            <label for="cols-count" style="color:var(--text-secondary);">Cols</label>
+            <input type="number" id="cols-count" min="1" max="32" value="8" style="width:60px;">
+            <button id="apply-size">Apply</button>
+          </div>
           <label id="matrix-grid-label">Loading grid...</label>
           <div id="matrix-grid"></div>
         </div>
@@ -685,6 +693,10 @@
       // Initialize UI components
       buildColorPalette();
       buildMatrixGrid();
+
+    // Initialize row/column input values
+    document.getElementById('rows-count').value = localMatrix.length;
+    document.getElementById('cols-count').value = localMatrix[0].length;
       setupEventListeners();
       initSliders(); // Make sure sliders are initialized
       
@@ -718,6 +730,9 @@
   function buildMatrixGrid() {
     const grid = document.getElementById('matrix-grid');
     grid.innerHTML = '';
+    if (localMatrix.length > 0) {
+      grid.style.gridTemplateColumns = `repeat(${localMatrix[0].length}, minmax(10px, 1fr))`;
+    }
     localMatrix.forEach((row, rowIndex) => {
       row.forEach((value, colIndex) => {
         const cell = document.createElement('div');
@@ -735,6 +750,11 @@
   function setupEventListeners() {
     document.getElementById('step').addEventListener('change', toggleStep);
     document.getElementById('camera-select').addEventListener('change', (e) => changeCamera(e.target.value));
+
+    const applyBtn = document.getElementById('apply-size');
+    if (applyBtn) {
+      applyBtn.addEventListener('click', updateMatrixDimensions);
+    }
   }
   
   function handlePaletteClick(e) {
@@ -795,7 +815,36 @@
     }
     }
 
-  let debounceTimeout;
+  function updateMatrixDimensions() {
+  const rows = parseInt(document.getElementById('rows-count').value, 10);
+  const cols = parseInt(document.getElementById('cols-count').value, 10);
+  if (!rows || !cols || rows <= 0 || cols <= 0) return;
+
+  // Adjust row count
+  if (localMatrix.length < rows) {
+    // Add new rows filled with zeros
+    while (localMatrix.length < rows) {
+      localMatrix.push(Array(cols).fill(0));
+    }
+  } else if (localMatrix.length > rows) {
+    localMatrix = localMatrix.slice(0, rows);
+  }
+
+  // Adjust column count for each row
+  localMatrix = localMatrix.map(r => {
+    if (r.length < cols) {
+      return [...r, ...Array(cols - r.length).fill(0)];
+    } else if (r.length > cols) {
+      return r.slice(0, cols);
+    }
+    return r;
+  });
+
+  buildMatrixGrid();
+  debouncedSendMatrixUpdate();
+}
+
+let debounceTimeout;
   function debouncedSendMatrixUpdate() {
     clearTimeout(debounceTimeout);
     debounceTimeout = setTimeout(sendMatrixUpdate, 300);

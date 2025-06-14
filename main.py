@@ -216,8 +216,8 @@ def update_matrix():
         return jsonify({'error': 'Invalid matrix format'}), 400
     
     rows, cols = len(new_matrix), len(new_matrix[0])
-    if rows != 8 or not all(len(row) == cols for row in new_matrix):
-         return jsonify({'error': 'Matrix must be rectangular and 8 rows'}), 400
+    if not all(len(row) == cols for row in new_matrix):
+         return jsonify({'error': 'Matrix must be rectangular'}), 400
 
     with matrix_lock:
         matrix = new_matrix
